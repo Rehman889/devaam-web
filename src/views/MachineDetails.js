@@ -8,7 +8,9 @@ import { useParams } from "react-router-dom";
 import {
   getMachineDetails,
   getMetricsByMachine,
+  
 } from "../store/actions/dashboardActions";
+import {machineSalesPageGraph} from '../store/actions/machineActions'
 import { useDispatch, useSelector } from "react-redux";
 import ReactApexChart from "react-apexcharts";
 import { getCombinedData } from "../helpers/getCombinedData";
@@ -49,7 +51,7 @@ import { Card } from "reactstrap";
 import BarChart from "../helpers/Charts/BarChart";
 import { connect } from "react-redux";
 
-function MachineDetails({ stock_level, graph_data, sales_per }) {
+function MachineDetails({ stock_level, graph_data, sales_per, sales_graphData }) {
   const [notiModal, setNotiModal] = useState(false);
   const [tab, setTab] = useState("4");
   const dispatch = useDispatch();
@@ -203,6 +205,13 @@ function MachineDetails({ stock_level, graph_data, sales_per }) {
     label: [],
   });
 
+  const [pieDates, setPieDate] = useState({
+    start_date: moment().format("YYYY-MM-DD"),
+    end_date: moment().format("YYYY-MM-DD"),
+  });
+
+  const [pieGraph, setPieGraph] = useState({});
+
   const [optionsBar1, setOptionsBar1] = useState({
     colors: ["#D5CFE1", "#09814A"],
     chart: {
@@ -306,14 +315,42 @@ function MachineDetails({ stock_level, graph_data, sales_per }) {
     // console.log("asd", props.history);
   };
   useEffect(() => {
-    console.log(params.id, "hello one");
+    // console.log(params.id, "hello one");
     dispatch(
       getMachineDetails({
         company_code: user?.company_code,
         machine_id: params?.id,
       })
     );
+
+    dispatch(
+      machineSalesPageGraph({
+        company_code: user?.company_code,
+        machine_id: params?.id,
+        ...pieDates
+        // "start_date": "2022-06-01",
+        // "end_date": "2022-08-01"
+      })
+    );
   }, []);
+
+  const handleChange = async (e) => {
+    setPieDate((prevState) => ({
+      ...prevState,
+      [e.target.name]: e.target.value,
+    }));
+
+    dispatch(
+      machineSalesPageGraph({
+        company_code: user?.company_code,
+        machine_id: params?.id,
+        ...pieDates
+        // "start_date": "2022-06-01",
+        // "end_date": "2022-08-01"
+      })
+    );
+
+  };
 
   useEffect(() => {
     const { getLast, getFourMonth } = graph_data;
@@ -327,7 +364,7 @@ function MachineDetails({ stock_level, graph_data, sales_per }) {
       xaxis: { categories: getFourMonth?.revenue.label || [""] },
     });
 
-    console.log(getLast);
+    // console.log(getLast);
     setSeriesBar1([
       {
         name: "Transaction",
@@ -361,21 +398,84 @@ function MachineDetails({ stock_level, graph_data, sales_per }) {
       // console.log(`${key}: ${value}`);
     }
     setSalesPercentages({ ...salesGraph });
-    setSumOfTotal({totalWeek: {revenue: sumOfArray(getLast?.revenue?.data || []), transaction: sumOfArray(getLast?.transaction?.data || [] )},
-    totalMonths: {revenue: sumOfArray(getFourMonth?.revenue?.data || []), transaction: sumOfArray(getFourMonth?.transaction?.data)}
-    })
+    // setSumOfTotal({totalWeek: {revenue: sumOfArray(getLast?.revenue?.data || []), transaction: sumOfArray(getLast?.transaction?.data || [] )},
+    // totalMonths: {revenue: sumOfArray(getFourMonth?.revenue?.data || []), transaction: sumOfArray(getFourMonth?.transaction?.data)}
+    // })
 
-    console.log(sumOfTotal);
+
+    // console.log(sumOfTotal);
 
     setPieChartData({ ...options1, labels: salesGraph.label || [""] });
     setSeries1(salesGraph?.data);
-    console.log(salesPercentages);
-  }, [graph_data]);
 
-  const sumOfArray = (data) => {
-    console.log(data);
-    return !data ? [] : data.reduce((a,b)=> a+b, 0);
+    if(!isEmpty(sales_graphData)) {
+      // console.log(sales_graphData);
+      const graph = getgraphData(sales_graphData);
+      setPieGraph(graph);
+      // if(pieEnabled =='Revenue') {
+      setPieChartData({ ...options1, labels: pieEnabled== 'Revenue' ? graph.revenue.label : graph.transaction.label || [""] });
+      setSeries1(pieEnabled=='Revenue' ? graph?.revenue.data : graph?.transaction.data || []);
+      // }
+      // console.log(graph);
+    }
+    // console.log(salesPercentages);
+  }, [graph_data, sales_graphData]);
+
+
+  const getgraphData = (data) => {
+    // console.log(data);
+    // return;
+  
+    const revenue = {
+      label: [],
+      data: [],
+    };
+    const transaction = {
+      label: [],
+      data: [],
+    };
+    const volume = {
+      label: [],
+      data: [],
+    };
+    for (const [key, value] of Object.entries(data.revenue)) {
+      revenue.label.push(key);
+      revenue.data.push(value);
+    }
+
+    for (const [key, value] of Object.entries(data.transactions)) {
+      transaction.label.push(key);
+      transaction.data.push(value);
+    }
+
+    for (const [key, value] of Object.entries(data.volume)) {
+      transaction.label.push(key);
+      transaction.data.push(value);
+    }
+    
+    return {revenue, transaction, volume, total_revenue: data.total_revenue, 
+      total_transactions: data.total_transactions, total_volume:  data.total_volume}
+      // console.log(sales);
+    // }
   }
+
+  useEffect(() => {
+    // console.log(pieGraph);
+    if(!isEmpty(pieGraph)) {
+    // console.log(pieEnabled);
+    setPieChartData({ ...options1, labels: pieEnabled== 'Revenue' ? pieGraph.revenue.label : pieGraph.transaction.label || [""] });
+    setSeries1(pieEnabled=='Revenue' ? pieGraph?.revenue.data : pieGraph?.transaction.data || []);
+    }
+  }, [pieEnabled])
+
+  const isEmpty = (obj) => {
+    return Object.keys(obj).length === 0;
+  }
+
+  // const sumOfArray = (data) => {
+  //   // console.log(data);
+  //   return !data ? [] : data.reduce((a,b)=> a+b, 0);
+  // }
   //  console.log(percent_sales_by_brand);
   // const [pieDates, setPieDate] = useState({
   //   start_date: moment().format("YYYY-MM-DD"),
@@ -1892,11 +1992,11 @@ function MachineDetails({ stock_level, graph_data, sales_per }) {
                                       >
                                         <p>Total Transactions</p>
                                         <h3>
-                                          {barChartTab == '1' ? sumOfTotal?.totalWeek?.transaction :  sumOfTotal?.totalMonths?.transaction} Pkr
+                                          {pieGraph?.total_transactions} Pkr
                                         </h3>
                                         <p>Total Revenue</p>
                                         <h3>
-                                          {barChartTab == '1' ? sumOfTotal?.totalWeek.revenue : sumOfTotal?.totalMonths.revenue} Pkr
+                                          {pieGraph?.total_revenue} Pkr
                                         </h3>
                                         {/* <p>
                                           <span>
@@ -1919,7 +2019,7 @@ function MachineDetails({ stock_level, graph_data, sales_per }) {
                                     </p>
 
                                     <br />
-                                    {/* <div className="row">
+                                    <div className="row">
                                       <div className="col-md-6">
                                         <div
                                           className="row"
@@ -1980,7 +2080,7 @@ function MachineDetails({ stock_level, graph_data, sales_per }) {
                                           </div>
                                         </div>
                                       </div>
-                                    </div> */}
+                                    </div>
 
                                     <div
                                       className="d-flex justify-content-center"
@@ -2900,13 +3000,15 @@ function MachineDetails({ stock_level, graph_data, sales_per }) {
 }
 
 const getMachineStates = (state) => state.machine;
-
+// console.log(state);
 const mapToStateProps = (state) => {
+  // console.log(state)
   return {
     ...state,
     graph_data: { ...getMachineStates(state).graph_data },
     stock_level: { ...getMachineStates(state).stock_level },
     sales_per: { ...getMachineStates(state).sales_level },
+    sales_graphData: { ...getMachineStates(state).sales_graph},
   };
 };
 

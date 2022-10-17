@@ -3,6 +3,7 @@ const initState = {
   machine_details: [],
   stock_level: [],
   graph_data: [],
+  sales_graph: [],
   loading: false,
 };
 
@@ -39,6 +40,11 @@ const machineReducer = (state = initState, { payload, type }) => {
       return {
         ...state,
         graph_data: payload,
+      };
+    case "MACHINES_SALES_GRAPH_API":
+      return {
+        ...state,
+        sales_graph: payload,
       };
     default:
       return state;

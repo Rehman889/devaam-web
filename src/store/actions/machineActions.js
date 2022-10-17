@@ -100,3 +100,31 @@ export const deleteMachine =
       await dispatch(setMachineLoading(false));
     }
   };
+
+
+  export const machineSalesPageGraph =
+  (obj, onSuccess = () => {}) =>
+  async (dispatch) => {
+    // console.log('okeyyy')
+    // await dispatch(setMachineLoading(true));
+    try {
+      let { data } = await machine.get({
+        request: {
+          method: "getMachineSalesPageByDate",
+          data: obj,
+        },
+      });
+      // console.log(data, 'sales');
+      // return;
+      dispatch({
+        type: "MACHINES_SALES_GRAPH_API",
+        payload: data?.response?.data,
+      });
+      // await dispatch(setMachineLoading(false));
+      // onSuccess();
+      // alert("Machine User Added successfully!");
+    } catch (error) {
+      console.log(error);
+      // await dispatch(setMachineLoading(false));
+    }
+  };
